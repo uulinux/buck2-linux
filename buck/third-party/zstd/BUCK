@@ -1,0 +1,29 @@
+VERSION = "1.5.7"
+
+http_archive(
+    name = 'src',
+    sha256 = '3dde08c4ceb16a1de42ed4008fa52eda01fc1b8b115012e8216b9f6d910db9e5',
+    urls = [
+        f'https://github.com/facebook/zstd/archive/refs/tags/v{VERSION}.tar.gz',
+    ],
+    type = 'tar.gz',
+    strip_prefix = f"zstd-{VERSION}",
+    sub_targets = [
+        'zstd.h',
+        'zdict.h',
+        'zstd_errors.h',
+        'zstd.c',
+    ]
+)
+
+cxx_library(
+    name = 'zstd',
+    header_namespace = 'zstd',
+    exported_headers = {
+        'zstd.h': ':src[zstd.h]',
+        'zdict.h': ':src[zdict.h]',
+        'zstd_errors.h': ':src[zstd_errors.h]',
+    },
+    srcs = [ ':src[zstd.c]' ],
+    preferred_linkage = "static",
+)

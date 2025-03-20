@@ -1,0 +1,23 @@
+[workspace]
+
+[package]
+name = "rust-third-party"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Dummy target to keep Cargo happy
+[[bin]]
+name = "top"
+path = "main.rs"
+
+[dependencies]
+# winnow = { version = "0.7.3", features = ["simd"] }
+jj-lib = { version = "0.27.0", default-features = false, features = [
+    "git",
+] }
+indicatif = "0.17.11"
+clap = { version = "4.5.32", features = ["derive"] }
+tokio = { version = "1.44.1", features = ["rt-multi-thread", "fs", "net", "macros"] }
+
+[patch.crates-io]

@@ -1,0 +1,125 @@
+
+VERSION = '2.2.4'
+
+http_archive(
+    name = 'src',
+    sha256 = 'a73343c3093e5cdc50d9377997c3815b878fd110bf6511c2c7759f2afb90f5a3',
+    urls = [
+        f'https://github.com/zlib-ng/zlib-ng/archive/refs/tags/{VERSION}.tar.gz',
+    ],
+    type = 'tar.gz',
+    strip_prefix = f'zlib-ng-{VERSION}',
+    sub_targets = [
+        "adler32.c",
+        "compress.c",
+        "crc32.c",
+        "deflate.c",
+        "infback.c",
+        "inflate.c",
+        "inftrees.c",
+        "trees.c",
+        "uncompr.c",
+        "zutil.c",
+        "gzclose.c",
+        "gzlib.c",
+        "gzread.c.in",
+        "gzwrite.c",
+        "zbuild.h",
+        'zutil.h',
+        'zutil_p.h',
+        'gzguts.h',
+        "zlib.h.in",
+        "zconf.h.in",
+        'zconf-ng.h.in',
+        "zlib-ng.h.in",
+        "zlib_name_mangling-ng.h.in",
+    ],
+)
+
+genrule(
+    name = 'libz-gzread',
+    out = 'gzread.c',
+    srcs = {
+        'gzread.c.in': ':src[gzread.c.in]',
+    },
+    cmd = """
+    cp $(location :src[gzread.c.in]) $OUT
+    sed -i 's/@ZLIB_SYMBOL_PREFIX@//g' $OUT
+    """
+)
+
+genrule(
+    name = 'libz-name-mangling',
+    out = 'zlib_name_mangling-ng.h',
+    srcs = {
+        'zlib_name_mangling-ng.h.in': ':src[zlib_name_mangling-ng.h.in]',
+    },
+    cmd = """
+    cp $(location :src[zlib_name_mangling-ng.h.in]) $OUT
+    sed -i 's/@ZLIB_SYMBOL_PREFIX@//g' $OUT
+    """
+)
+
+genrule(
+    name = 'libz-zlib-ng',
+    out = 'zlib-ng.h',
+    srcs = {
+        'zlib-ng.h.in': ':src[zlib-ng.h.in]',
+    },
+    cmd = """
+    cp $(location :src[zlib-ng.h.in]) $OUT
+    sed -i 's/@ZLIB_SYMBOL_PREFIX@//g' $OUT
+    """
+)
+
+genrule(
+    name = 'libz-zlib',
+    out = 'zlib.h',
+    srcs = {
+        'zlib.h.in': ':src[zlib.h.in]',
+    },
+    cmd = """
+    cp $(location :src[zlib.h.in]) $OUT
+    sed -i 's/@ZLIB_SYMBOL_PREFIX@//g' $OUT
+    """
+)
+
+cxx_library(
+    name = 'libz',
+    srcs = [
+        ':src[adler32.c]',
+        ':src[compress.c]',
+        ':src[crc32.c]',
+        ':src[deflate.c]',
+        ':src[infback.c]',
+        ':src[inflate.c]',
+        ':src[inftrees.c]',
+        ':src[trees.c]',
+        ':src[uncompr.c]',
+        ':src[zutil.c]',
+        ':src[gzlib.c]',
+        ':libz-gzread',
+        ':src[gzwrite.c]',
+    ],
+    preferred_linkage = "static",
+    headers = [],
+    header_namespace = "",
+    exported_headers = {
+        'zbuild.h': ':src[zbuild.h]',
+        'zutil.h': ':src[zutil.h]',
+        'zutil_p.h': ':src[zutil_p.h]',
+        'zconf.h': ':src[zconf.h.in]',
+        'gzguts.h': ':src[gzguts.h]',
+        'zlib.h': ':libz-zlib',
+        'zlib-ng.h': ':libz-zlib-ng',
+        'zconf-ng.h': ':src[zconf-ng.h.in]',
+        'zlib_name_mangling-ng.h': ':libz-name-mangling',
+    },
+    compiler_flags = [
+        "-DSTDC",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_POSIX_SOURCE",
+        "-DWITH_GZFILEOP",
+        "-DZLIB_COMPAT",
+    ],
+)

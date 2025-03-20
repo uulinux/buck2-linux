@@ -1,0 +1,18 @@
+[[language]]
+name = "scheme"
+language-servers = [ "steel-language-server" ]
+
+[language-server.steel-language-server]
+command = "steel-language-server"
+args = []
+
+[language-server.rust-analyzer.config.server]
+path = "rust-analyzer"
+
+[language-server.rust-analyzer.config.check]
+overrideCommand = ["rust-project", "check", "$saved_file"]
+
+[language-server.rust-analyzer.config.workspace.discoverConfig]
+command = ["rust-project", "develop-json", "{arg}"]
+progressLabel = "rust-analyzer[buck2]"
+filesToWatch = ["BUCK"]

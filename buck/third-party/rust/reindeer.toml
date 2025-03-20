@@ -1,0 +1,3 @@
+precise_srcs = true
+include_top_level = true
+fixup_templates = true

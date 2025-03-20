@@ -1,0 +1,2 @@
+extra_srcs = ["src/**/*.pest"]
+cargo_env = true
