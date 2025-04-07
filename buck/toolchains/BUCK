@@ -1,5 +1,42 @@
-load("@prelude//toolchains:demo.bzl", "system_demo_toolchains")
+load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
+load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
+load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 
-# All the default toolchains, suitable for a quick demo or early prototyping.
-# Most real projects should copy/paste the implementation to configure them.
-system_demo_toolchains()
+constraint_setting(name = "build_mode")
+
+constraint_value(
+    name = "debug",
+    constraint_setting = ":build_mode",
+)
+
+constraint_value(
+    name = "release",
+    constraint_setting = ":build_mode",
+)
+
+system_cxx_toolchain(
+    name = "cxx",
+    cxx_flags = select({
+        ":release": ["-Os", "-flto=thin"],
+        ":debug": ["-gsplit-dwarf", "-O2"],
+    }),
+    link_flags = select({
+        ":release": ["-Os", "-flto=thin"],
+        ":debug": ["-gsplit-dwarf", "-O2"],
+    }),
+    visibility = ["PUBLIC"],
+)
+
+system_rust_toolchain(
+    name = "rust",
+    rustc_flags = select({
+        ":release": ["-Copt-level=z", "-Cdebug-info=0"],
+        ":debug": ["-Copt-level=2", "-Cdebug-info=2"],
+    }),
+    visibility = ["PUBLIC"],
+)
+
+system_python_bootstrap_toolchain(
+    name = "python_bootstrap",
+    visibility = ["PUBLIC"],
+)
