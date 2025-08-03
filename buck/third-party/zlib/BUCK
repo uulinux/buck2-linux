@@ -1,0 +1,61 @@
+
+VERSION = '0.5.1'
+
+http_archive(
+    name = 'src',
+    sha256 = '270dedde7e1cd63e7a743a520a74b92e82aaf02a2cb7e5e461364f58a03cc720',
+    urls = [
+        f'https://github.com/trifectatechfoundation/zlib-rs/archive/refs/tags/v{VERSION}.tar.gz',
+    ],
+    type = 'tar.gz',
+    strip_prefix = f'zlib-rs-{VERSION}',
+    visibility = [],
+    sub_targets = [
+        'libz-rs-sys/include/zlib.h',
+    ],
+)
+
+rust_library(
+    name = 'zlib_rs',
+    srcs = [':src'],
+    edition = '2021',
+    crate_root = 'src/zlib-rs/src/lib.rs',
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = 'libz_rs_sys',
+    srcs = [':src'],
+    edition = '2021',
+    crate_root = 'src/libz-rs-sys/src/lib.rs',
+    deps = [
+        ':zlib_rs',
+    ],
+    env = {
+        'CARGO_PKG_VERSION': VERSION,
+        'CARGO_PKG_VERSION_MAJOR': VERSION.split('.')[0],
+        'CARGO_PKG_VERSION_MINOR': VERSION.split('.')[1],
+        'CARGO_PKG_VERSION_PATCH': VERSION.split('.')[2] if len(VERSION.split('.')) > 2 else '0',
+        'CARGO_PKG_NAME': 'libz-rs-sys',
+    },
+)
+
+rust_library(
+    name = 'libz',
+    srcs = [':src'],
+    edition = '2021',
+    crate_root = 'src/libz-rs-sys-cdylib/src/lib.rs',
+    deps = [
+        ':libz_rs_sys',
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Genrule for generating the zlib.h header file from src/libz-rs-sys/include
+genrule(
+    name = 'zlib_h',
+    srcs = [':src'],
+    out = 'zlib.h',
+    cmd = 'cp $(location :src[libz-rs-sys/include/zlib.h]) $OUT',
+    visibility = ["PUBLIC"],
+)

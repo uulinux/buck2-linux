@@ -1,2 +1,0 @@
-extra_deps = ["third-party//libgit2:libgit2"]
-buildscript = []

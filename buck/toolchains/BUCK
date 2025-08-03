@@ -1,38 +1,24 @@
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
+load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 
-constraint_setting(name = "build_mode")
-
-constraint_value(
-    name = "debug",
-    constraint_setting = ":build_mode",
-)
-
-constraint_value(
-    name = "release",
-    constraint_setting = ":build_mode",
-)
-
 system_cxx_toolchain(
     name = "cxx",
-    cxx_flags = select({
-        ":release": ["-Os", "-flto=thin"],
-        ":debug": ["-gsplit-dwarf", "-O2"],
-    }),
-    link_flags = select({
-        ":release": ["-Os", "-flto=thin"],
-        ":debug": ["-gsplit-dwarf", "-O2"],
-    }),
+    cxx_flags = ["-Os", "-flto=thin"],
+    link_flags = ["-Os", "-Wl,-O4", "-flto=thin"],
+    linker = "clang",
+    visibility = ["PUBLIC"],
+)
+
+system_genrule_toolchain(
+    name = "genrule",
     visibility = ["PUBLIC"],
 )
 
 system_rust_toolchain(
     name = "rust",
-    rustc_flags = select({
-        ":release": ["-Copt-level=z", "-Cdebug-info=0"],
-        ":debug": ["-Copt-level=2", "-Cdebug-info=2"],
-    }),
+    rustc_flags = ["-Copt-level=s", "-Cdebuginfo=1", "-Cstrip=symbols", "-Clto=thin", "-Cpanic=abort", "-Zdylib-lto"],
     visibility = ["PUBLIC"],
 )
 

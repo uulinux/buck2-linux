@@ -114,6 +114,6 @@ cxx_library(
     deps = [
         "third-party//bssl:crypto",
         "third-party//bssl:ssl",
-        "third-party//libz:libz",
+        "third-party//zlib:libz",
     ],
 )
