@@ -1,23 +1,26 @@
 load(
-    ":BUILD.generated.bzl",
+    ":sources.bzl",
     "crypto_headers",
     "crypto_internal_headers",
     "crypto_sources",
     "crypto_sources_asm",
-    "fips_fragments",
+    "crypto_sources_nasm",
+    "bcm_sources",
+    "bcm_sources_asm",
+    "bcm_sources_nasm",
+    "bcm_internal_headers",
     "ssl_headers",
     "ssl_internal_headers",
     "ssl_sources",
-    "tool_headers",
-    "tool_sources",
+    "bssl_internal_headers",
+    "bssl_sources",
 )
 
-VERSION = "2025.3.11+g9802ee3a03f1a601527d724d72173d405615c6aa"
-GIT_COMMIT = VERSION.split('g', 1)[1]
+GIT_COMMIT = "baaf868e6e8fa45396070cd8d32d196c404d9ff3"
 
 http_archive(
     name = 'src',
-    sha256 = 'a0d0c144f7f934932dafe5b341881f389c60b7749e1745f5b2877db62dc8145b',
+    sha256 = '43f7bdd5848801a2a304917e5173636e727fed49252f7bc28aa926ea207327db',
     urls = [
         'https://github.com/google/boringssl/archive/{}.tar.gz'.format(GIT_COMMIT),
     ],
@@ -28,17 +31,21 @@ http_archive(
         crypto_internal_headers + \
         crypto_sources + \
         crypto_sources_asm + \
-        fips_fragments + \
+        crypto_sources_nasm + \
+        bcm_sources + \
+        bcm_sources_asm + \
+        bcm_sources_nasm + \
+        bcm_internal_headers + \
         ssl_headers + \
         ssl_internal_headers + \
         ssl_sources + \
-        tool_headers + \
-        tool_sources + [
+        bssl_internal_headers + \
+        bssl_sources + [
             # rust sources
-            'src/rust/bssl-sys/src/lib.rs',
-            'src/rust/bssl-sys/rust_wrapper.c',
-            'src/rust/bssl-sys/rust_wrapper.h',
-            'src/rust/bssl-sys/wrapper.h',
+            'rust/bssl-sys/src/lib.rs',
+            'rust/bssl-sys/rust_wrapper.c',
+            'rust/bssl-sys/rust_wrapper.h',
+            'rust/bssl-sys/wrapper.h',
         ],
     visibility = ['third-party//bssl/...'],
 )
@@ -49,35 +56,16 @@ cc_copts = [
     # Assembler option --noexecstack adds .note.GNU-stack to each object to
     # ensure that binaries can be built with non-executable stack.
     "-Wa,--noexecstack",
-
-    # This list of warnings should match those in the top-level CMakeLists.txt.
-    "-Wall",
-    "-Werror",
-    "-Wformat=2",
-    "-Wsign-compare",
-    "-Wmissing-field-initializers",
-    "-Wwrite-strings",
-    "-Wshadow",
-    "-fno-common",
-]
-cc_copts_c11 = [
-    "-Wmissing-prototypes",
-    "-Wold-style-definition",
-    "-Wstrict-prototypes",
 ]
 cc_copts_cxx = [
-    "-std=c++17",
+    "-std=c++26",
+    "-stdlib=libc++",
     "-Wmissing-declarations",
 ]
 
 boringssl_copts = [
     "-DBORINGSSL_IMPLEMENTATION",
-] + select({
-    # We assume that non-Windows builds use a GCC-compatible toolchain and that
-    # Windows builds do not.
-    "config//os:windows": [],
-    "DEFAULT": cc_copts,
-}) + select({
+] + cc_copts + select({
     # This is needed on glibc systems to get rwlock in pthreads, but it should
     # not be set on Apple platforms or FreeBSD, where it instead disables APIs
     # we use.
@@ -92,34 +80,28 @@ boringssl_copts = [
     "DEFAULT": [],
 })
 
-boringssl_copts_c11 = boringssl_copts + select({
-    "config//os:windows": ["/std:c11"],
-    "DEFAULT": cc_copts_c11,
-})
-
-boringssl_copts_cxx = boringssl_copts + select({
-    "config//os:windows": [],
-    "DEFAULT": cc_copts_cxx,
-})
+boringssl_copts_cxx = boringssl_copts + cc_copts_cxx
 
 cxx_library(
     name = "crypto",
     srcs = map(src_ref, crypto_sources) + select({
-        "config//os:windows": [],
+        "config//os:windows": map(src_ref, crypto_sources_nasm),
         "DEFAULT": map(src_ref, crypto_sources_asm),
+    }) + map(src_ref, bcm_sources) + select({
+        "config//os:windows": map(src_ref, bcm_sources_nasm),
+        "DEFAULT": map(src_ref, bcm_sources_asm),
     }),
-    compiler_flags = boringssl_copts_c11,
+    headers = map(src_ref, crypto_internal_headers)
+        + map(src_ref, bcm_internal_headers),
+    compiler_flags = boringssl_copts_cxx,
 
     header_namespace = "",
     exported_headers = {
-        x: y for (x, y) in map(lambda x: (x[12:], src_ref(x)), crypto_headers)
+        x: y for (x, y) in map(lambda x: (x[8:], src_ref(x)), crypto_headers)
     },
 
     preferred_linkage = "static",
-    linker_flags = select({
-        "config//os:windows": ["-defaultlib:advapi32.lib"],
-        "DEFAULT": ["-pthread"],
-    }),
+    exported_linker_flags = ["-lc++", "-lc++abi"],
 )
 
 cxx_library(
@@ -129,21 +111,17 @@ cxx_library(
 
     header_namespace = "",
     exported_headers = {
-        x: y for (x, y) in map(lambda x: (x[12:], src_ref(x)), ssl_headers)
+        x: y for (x, y) in map(lambda x: (x[8:], src_ref(x)), ssl_headers)
     },
 
     preferred_linkage = "static",
-    exported_linker_flags = select({
-        'config//os:linux': [ '-lstdc++' ],
-        'config//os:macos': [ '-lc++' ],
-        'DEFAULT': []
-    }),
+    exported_linker_flags = ["-lc++", "-lc++abi"],
     deps = [ ":crypto" ],
 )
 
 cxx_binary(
     name = "bssl",
-    srcs = map(src_ref, tool_sources),
+    srcs = map(src_ref, bssl_sources),
     compiler_flags = boringssl_copts_cxx,
     deps = [ ":crypto", ":ssl" ],
     visibility = ['PUBLIC'],
